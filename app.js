@@ -25,24 +25,23 @@ initializeDbAndServer();
 //API-1
 
 const convertDbToResponse = (dbObject) => {
-  return {
+  const object = {
     stateId: dbObject.state_id,
-    stateName: dbObject.state_name,
-    statePopulation: dbObject.statePopulation,
+    stateName: `${dbObject.state_name}`,
+    population: dbObject.population,
   };
+  return object;
 };
 
 app.get("/states/", async (request, response) => {
   const getStatesQuery = `
-    SELECT * FROM STATES;`;
+    SELECT * FROM STATE;`;
 
   const getStates = await db.all(getStatesQuery);
 
-  response.send(
-    getStates.map((eachState) => {
-      convertDbToResponse(eachState);
-    })
-  );
+  const result = getStates.map((eachState) => convertDbToResponse(eachState));
+
+  response.send(result);
 });
 
 //API-2
@@ -50,7 +49,7 @@ app.get("/states/", async (request, response) => {
 app.get("/states/:stateId", async (request, response) => {
   const { stateId } = request.params;
   const getStateQuery = `
-    SELECT * FROM STATES WHERE STATE_ID=${stateId};`;
+    SELECT * FROM STATE WHERE STATE_ID=${stateId};`;
 
   const getState = await db.get(getStateQuery);
 
@@ -58,9 +57,10 @@ app.get("/states/:stateId", async (request, response) => {
 });
 
 //API-3
-
+app.use(express.json());
 app.post("/districts/", async (request, response) => {
   const districtDetails = request.body;
+  console.log(request.body);
   const {
     districtName,
     stateId,
@@ -143,7 +143,7 @@ const convertStats = (object) => {
     totalCases: object.totalCases,
     totalCured: object.totalCured,
     totalActive: object.totalActive,
-    totalDeath: object.totalDeath,
+    totalDeaths: object.totalDeath,
   };
 };
 
@@ -161,16 +161,23 @@ app.get("/states/:stateId/stats/", async (request, response) => {
 
 //API-8
 
-convertState = (obj) => {
+const convertState = (obj) => {
   return { stateName: obj.state_name };
 };
 app.get("/districts/:districtId/details/", async (request, response) => {
   const { districtId } = request.params;
-  const statsQuery = `
-    SELECT state_name
-    FROM DISTRICT WHERE district_ID=${districtId};`;
-  const getStats = await db.get(statsQuery);
-  response.send(convertState(getStats));
+  const getDistrictIdQuery = `
+select state_id from district
+where district_id = ${districtId};
+`; //With this we will get the state_id using district table
+  const getDistrictIdQueryResponse = await db.get(getDistrictIdQuery);
+
+  const getStateNameQuery = `
+select state_name as stateName from state
+where state_id = ${getDistrictIdQueryResponse.state_id};
+`; //With this we will get state_name as stateName using the state_id
+  const getStateNameQueryResponse = await db.get(getStateNameQuery);
+  response.send(getStateNameQueryResponse);
 });
 
 module.exports = app;
